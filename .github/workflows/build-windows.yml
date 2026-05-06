@@ -1,0 +1,93 @@
+name: Build Windows EXE
+
+on:
+  release:
+    types: [published, created]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python-version: ['3.11']
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        working-directory: ./unlock_tool
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install PyInstaller==6.20.0
+
+      - name: Build Windows EXE
+        working-directory: ./unlock_tool
+        run: |
+          python -m PyInstaller build_windows.spec --noconfirm --clean
+          echo "Build complete! Checking output..."
+          dir /s dist\
+
+      - name: Create distribution archive
+        working-directory: ./unlock_tool/dist
+        run: |
+          # Compress the Windows build
+          $compress = @{
+            Path = "unlock_tool"
+            DestinationPath = "unlock_tool-v${{ github.event.release.tag_name }}-windows-x86_64.zip"
+            CompressionLevel = "Optimal"
+          }
+          Compress-Archive @compress
+          dir *.zip
+
+      - name: Get release info
+        id: get_release
+        run: |
+          $release_tag = "${{ github.event.release.tag_name }}"
+          if (-not $release_tag) {
+            $release_tag = ${{ github.ref_name }}
+          }
+          echo "release_tag=$release_tag" >> $env:GITHUB_OUTPUT
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v1
+        if: github.event_name == 'release'
+        with:
+          files: |
+            unlock_tool/dist/unlock_tool-*.zip
+            unlock_tool/dist/unlock_tool.exe
+          tag_name: ${{ github.event.release.tag_name }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Release Artifacts Summary
+        run: |
+          echo "=== Windows Build Complete ===" >> $env:GITHUB_STEP_SUMMARY
+          echo "" >> $env:GITHUB_STEP_SUMMARY
+          echo "**Build Info:**" >> $env:GITHUB_STEP_SUMMARY
+          echo "- Python: ${{ matrix.python-version }}" >> $env:GITHUB_STEP_SUMMARY
+          echo "- Platform: Windows x86_64" >> $env:GITHUB_STEP_SUMMARY
+          echo "- Release Tag: ${{ steps.get_release.outputs.release_tag }}" >> $env:GITHUB_STEP_SUMMARY
+          echo "" >> $env:GITHUB_STEP_SUMMARY
+          echo "**Output Files:**" >> $env:GITHUB_STEP_SUMMARY
+          dir /s unlock_tool\dist\ | findstr /E "exe zip" | ForEach-Object { echo "- $_" >> $env:GITHUB_STEP_SUMMARY }
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: windows-exe-${{ matrix.python-version }}
+          path: |
+            unlock_tool/dist/unlock_tool.exe
+            unlock_tool/dist/unlock_tool-*.zip
+          retention-days: 30
