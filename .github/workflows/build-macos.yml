@@ -77,7 +77,7 @@ jobs:
           ls -lh unlock_tool/dist/*.dmg 2>/dev/null | awk '{print "- " $9}' >> $GITHUB_STEP_SUMMARY || echo "- No DMG files found" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: macos-dmg-${{ matrix.python-version }}
           path: |

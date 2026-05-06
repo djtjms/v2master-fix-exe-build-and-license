@@ -71,7 +71,7 @@ jobs:
           echo "- Status: ✅ SUCCESS" >> $env:GITHUB_STEP_SUMMARY
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: windows-exe-${{ matrix.python-version }}
           path: |
