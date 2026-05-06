@@ -2,7 +2,7 @@
 import os
 import sys
 from pathlib import Path
-from PyInstaller.utils.hooks import collect_submodules
+from PyInstaller.utils.hooks import collect_submodules, collect_all
 
 ROOT_DIR = Path(os.getcwd()).resolve()
 
@@ -64,6 +64,20 @@ else:
         datas.append((str(drivers_linux), 'drivers'))
 
 hidden_imports = collect_submodules('modules')
+
+# Add PyQt6 and other critical dependencies explicitly
+hidden_imports.extend([
+    'PyQt6',
+    'PyQt6.QtWidgets',
+    'PyQt6.QtGui',
+    'PyQt6.QtCore',
+    'PyQt6.QtSvg',
+    'PyQt6.sip',
+    'Crypto',
+    'Crypto.Random',
+    'Crypto.Cipher',
+    'Crypto.Hash',
+])
 
 block_cipher = None
 
